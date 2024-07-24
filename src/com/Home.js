@@ -12,6 +12,8 @@ export default function Home() {
       <Scene name={STATE.EDIT} element={<TODO.Edit />} />
       
       <Scene name={STATE.LIST} element={<TODO.List />} />
+      
+      <Scene name={STATE.VIZ} element={<TODO.Viz />} />
     </Scene>
   </main>
 }

@@ -15,10 +15,15 @@ function isDigit(char) {
 
 
 function newItem(slug='new to-do') {
+  const oneMonthFromNow = new Date()
+  oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1)
+  
   return {
     ...defaultItem,
     id: uuid(),
     slug,
+    dueDate: oneMonthFromNow.toISOString(),
+    owner: 'Me',
   }
 }
 

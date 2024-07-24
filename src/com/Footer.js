@@ -10,11 +10,11 @@ export default function Footer() {
   
   
   return <footer>
-    <div>
+    <div className='menu'>
       <Link to={VIEW.APP.path}>Home</Link>
       <Link to={VIEW.APP.ADD.path}>Add</Link>
-      <Link to={VIEW.APP.EDIT.path}>Edit</Link>
       <Link to={VIEW.APP.LIST.path}>List</Link>
+      <Link to={VIEW.APP.VIZ.path}>VIZ</Link>
     </div>
     
     <div>

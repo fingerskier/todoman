@@ -27,7 +27,7 @@ export default function Add() {
     <form onSubmit={add}>
       <label>
         Slug:
-        <input type="text" name="slug" />
+        <input autoFocus={true} type="text" name="slug" />
       </label>
       <br />
       <button type="submit">Add</button>

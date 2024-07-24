@@ -16,6 +16,7 @@ const STATE = {
   PEOPLE: 'PEOPLE',
   TODO: 'TODO',
   TOPICS: 'TOPICS',
+  VIZ: 'VIZ',
 }
 
 
@@ -26,6 +27,7 @@ const VIEWS = {
     DATA: STATE.DATA,
     EDIT: STATE.EDIT,
     LIST: STATE.LIST,
+    VIZ: STATE.VIZ,
   }
 }
 
