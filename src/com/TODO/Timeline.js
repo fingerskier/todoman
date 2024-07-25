@@ -63,7 +63,7 @@ export default function Timeline() {
     
     filtered.forEach(todo => {
       const dateNum = +(new Date(todo.dueDate))
-      if (dateNum) {
+      if (dateNum) {1
         max = Math.max(max, dateNum);
         min = Math.min(min, dateNum);
       }
