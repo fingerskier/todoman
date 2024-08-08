@@ -1,6 +1,7 @@
 import React from 'react'
 import {Scene} from '../lib/HREFContext'
 import {STATE} from '../lib/constants'
+import DataShare from './DataShare'
 import TODO from './TODO'
 
 
@@ -14,6 +15,8 @@ export default function Home() {
       <Scene name={STATE.LIST} element={<TODO.List />} />
       
       <Scene name={STATE.VIZ} element={<TODO.Viz />} />
+      
+      <Scene name={STATE.DATA} element={<DataShare />} />
     </Scene>
   </main>
 }
