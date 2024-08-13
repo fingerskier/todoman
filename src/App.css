@@ -50,7 +50,7 @@ label {
 
 main {
   max-height: 80vh;
-  min-width: 66vw;
+  min-width: 60vw;
   overflow-y: auto;
 }
 
@@ -90,16 +90,21 @@ main {
 }
 
 
-.todo.strike {
+.todo.completed {
   text-decoration: line-through;
+}
+
+.todo.not-mine {
+  font-style: italic;
+}
+
+.todo.past-due {
+  font-weight: bolder;
 }
 
 
 .viz.container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  text-align: center;
   height: 100%;
   width: 100%;
 }
@@ -122,4 +127,5 @@ main {
   border: thick ridge rgb(255, 218, 163);
   border-radius: 1rem;
   padding: 0.5rem 1rem;
+  display: none;
 }

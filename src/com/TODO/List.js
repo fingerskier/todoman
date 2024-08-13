@@ -10,6 +10,13 @@ export default function List() {
   
   const [filtered, setFiltered] = useState([])
   const [showCompleted, setShowCompleted] = useState(false)
+
+
+  const classes = item=>`
+    todo ${item?.owner.toLowerCase()!=='me'? 'not-mine':''}
+    ${((new Date(item?.dueDate)) < (new Date()))? 'past-due': ''}
+    ${item?.completed? 'completed': ''}
+  `.replace(/\s+/g, ' ').trim()
   
   
   useEffect(()=>{
@@ -40,7 +47,7 @@ export default function List() {
       </li>
       
       {filtered.map((todo, index) => <li
-        className={`todo ${todo.owner.toLowerCase()!=='me'? 'strike':''}`}
+        className={classes(todo)}
         key={index}
       >
         {todo.slug}
@@ -50,5 +57,11 @@ export default function List() {
         <button onClick={e=>goto(VIEW.APP.EDIT.path, {ID: todo.id})}>edit</button>
       </li>)}
     </ul>
+    
+    <div>
+      <div className="todo not-mine">Not Mine</div>
+      <div className="todo completed">Complete</div>
+      <div className="todo past-due">Past Due</div>
+    </div>
   </div>
 }

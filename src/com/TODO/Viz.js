@@ -13,8 +13,6 @@ export default function Viz() {
   
   
   return <div className='viz container'>
-    <h2>Vizuelle</h2>
-    
     {views.map((thing, index) => <button
       className={`${view===thing? 'active':''}`}
       key={index}
@@ -22,8 +20,6 @@ export default function Viz() {
     >
       {thing}
     </button>)}
-    
-    {view}
     
     {view==='Urgency' && <Urgency />}
     {view==='Timeline' && <Timeline />}
