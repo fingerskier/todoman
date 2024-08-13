@@ -44,8 +44,8 @@ export default function List() {
         key={index}
       >
         {todo.slug}
-        &nbsp;
-        {!(+(new Date(todo.dueDate)))? <em>open-ended</em> : todo.dueDate}
+        ,&nbsp;
+        {!(+(new Date(todo.dueDate)))? <em>open-ended</em> : todo.dueDate.toLocaleString().substr(5, 5)}
         &nbsp;
         <button onClick={e=>goto(VIEW.APP.EDIT.path, {ID: todo.id})}>edit</button>
       </li>)}
