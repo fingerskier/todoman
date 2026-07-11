@@ -21,7 +21,7 @@ test('renders the three planning board rows', () => {
   render(<App />);
 
   expect(screen.getByRole('heading', { name: /priority/i })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: /scheduled/i })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /^scheduled$/i })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: /delegated/i })).toBeInTheDocument();
   expect(screen.getByText('2025-Q4')).toBeInTheDocument();
 });
@@ -70,4 +70,37 @@ test('persists edits across reloads via localStorage', () => {
   render(<App />);
 
   expect(screen.getAllByRole('button', { name: /finalize launch checklist v2/i })[0]).toBeInTheDocument();
+});
+
+
+test('adds a new todo item', () => {
+  render(<App />);
+
+  fireEvent.click(screen.getByRole('button', { name: /add todo/i }));
+  fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Review beta feedback' } });
+  fireEvent.change(screen.getByLabelText(/owner/i), { target: { value: 'Alex' } });
+  fireEvent.click(screen.getByRole('button', { name: /save todo/i }));
+
+  expect(screen.getAllByRole('button', { name: /review beta feedback/i })[0]).toBeInTheDocument();
+});
+
+test('deletes an existing todo item', () => {
+  render(<App />);
+
+  fireEvent.click(screen.getAllByRole('button', { name: /finalize launch checklist/i })[0]);
+  fireEvent.click(screen.getByRole('button', { name: /delete todo/i }));
+
+  expect(screen.queryByRole('button', { name: /finalize launch checklist/i })).not.toBeInTheDocument();
+});
+
+test('configures columns for a board row', () => {
+  render(<App />);
+
+  const priorityRow = screen.getByLabelText(/priority board row/i);
+  fireEvent.click(within(priorityRow).getByRole('button', { name: /configure columns/i }));
+  fireEvent.change(screen.getByPlaceholderText(/example: blocked/i), { target: { value: 'Blocked' } });
+  fireEvent.click(screen.getByRole('button', { name: /^add column$/i }));
+  fireEvent.click(screen.getByLabelText(/close column configurator/i));
+
+  expect(screen.getByRole('heading', { name: 'Blocked' })).toBeInTheDocument();
 });
