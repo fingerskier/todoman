@@ -133,6 +133,19 @@ function getQuarterBucket(dueDate) {
   return `${year}-Q${Math.ceil(month / 3)}`
 }
 
+function isMeOwner(owner) {
+  return String(owner || '').trim().toLowerCase() === 'me'
+}
+
+function getTodoRow(todo) {
+  if (todo.due_date) return 'scheduled'
+
+  const owner = String(todo.owner || '').trim()
+  if (owner && !isMeOwner(owner)) return 'delegated'
+
+  return 'priority'
+}
+
 function bucketToDueDate(bucket) {
   const match = bucket.match(/^(\d{4})-Q([1-4])$/)
   if (!match) return ''
@@ -378,17 +391,17 @@ function App() {
     {
       rowKey: 'priority',
       ...ROW_DEFINITIONS.priority,
-      columns: priorityColumns.map((column) => ({...column, row: 'priority', value: column.name, label: column.name, filter: (todo) => todo.priority === column.name})),
+      columns: priorityColumns.map((column) => ({...column, row: 'priority', value: column.name, label: column.name, filter: (todo) => getTodoRow(todo) === 'priority' && todo.priority === column.name})),
     },
     {
       rowKey: 'scheduled',
       ...ROW_DEFINITIONS.scheduled,
-      columns: sortColumns(columnsByRow.scheduled).map((column) => ({...column, row: 'scheduled', value: column.name, label: column.name, filter: (todo) => getQuarterBucket(todo.due_date) === column.name})),
+      columns: sortColumns(columnsByRow.scheduled).map((column) => ({...column, row: 'scheduled', value: column.name, label: column.name, filter: (todo) => getTodoRow(todo) === 'scheduled' && getQuarterBucket(todo.due_date) === column.name})),
     },
     {
       rowKey: 'delegated',
       ...ROW_DEFINITIONS.delegated,
-      columns: sortColumns(columnsByRow.delegated).map((column) => ({...column, row: 'delegated', value: column.name, label: column.name, filter: (todo) => (todo.owner || 'Unassigned') === column.name})),
+      columns: sortColumns(columnsByRow.delegated).map((column) => ({...column, row: 'delegated', value: column.name, label: column.name, filter: (todo) => getTodoRow(todo) === 'delegated' && String(todo.owner || '').trim() === column.name})),
     },
   ]
 
