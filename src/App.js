@@ -1,5 +1,7 @@
-import React, {useMemo, useState} from 'react'
+import React, {useEffect, useMemo, useState} from 'react'
 import './App.css'
+
+const STORAGE_KEY = 'todoman.todos.v1'
 
 const PRIORITY_COLUMNS = [
   {name: 'Now', ordinal: 1},
@@ -46,6 +48,18 @@ const INITIAL_TODOS = [
   },
 ]
 
+function loadTodos() {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY)
+    if (!stored) return INITIAL_TODOS
+
+    const parsed = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed : INITIAL_TODOS
+  } catch (error) {
+    return INITIAL_TODOS
+  }
+}
+
 function getQuarterBucket(dueDate) {
   if (!dueDate) return 'Unscheduled'
 
@@ -53,6 +67,14 @@ function getQuarterBucket(dueDate) {
   if (!year || !month) return 'Unscheduled'
 
   return `${year}-Q${Math.ceil(month / 3)}`
+}
+
+function bucketToDueDate(bucket) {
+  const match = bucket.match(/^(\d{4})-Q([1-4])$/)
+  if (!match) return ''
+
+  const startMonth = (Number(match[2]) - 1) * 3 + 1
+  return `${match[1]}-${String(startMonth).padStart(2, '0')}-01`
 }
 
 function quarterSortValue(bucket) {
@@ -191,8 +213,16 @@ function TodoEditor({todo, emphasis, priorityColumns, onClose, onSave}) {
 }
 
 function App() {
-  const [todos, setTodos] = useState(INITIAL_TODOS)
+  const [todos, setTodos] = useState(loadTodos)
   const [editorState, setEditorState] = useState(null)
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(todos))
+    } catch (error) {
+      // Ignore write failures (e.g. storage disabled or over quota).
+    }
+  }, [todos])
 
   const activeTodos = todos.filter((todo) => todo.active)
   const priorityColumns = useMemo(() => [...PRIORITY_COLUMNS].sort((a, b) => a.ordinal - b.ordinal), [])
@@ -217,8 +247,8 @@ function App() {
     },
   ]
 
-  function openEditor(todoId, emphasis = null) {
-    setEditorState({todoId, emphasis})
+  function openEditor(todoId, {emphasis = null, overrides = null} = {}) {
+    setEditorState({todoId, emphasis, overrides})
   }
 
   function handleDragStart(event, todoId) {
@@ -236,7 +266,21 @@ function App() {
       return
     }
 
-    openEditor(todoId, column.row === 'scheduled' ? 'due_date' : 'owner')
+    if (column.row === 'scheduled') {
+      const target = todos.find((todo) => todo.id === todoId)
+      const alreadyInBucket = target && getQuarterBucket(target.due_date) === column.value
+      openEditor(todoId, {
+        emphasis: 'due_date',
+        overrides: alreadyInBucket ? null : {due_date: bucketToDueDate(column.value)},
+      })
+      return
+    }
+
+    // Delegated columns: pre-fill the target owner so saving commits the move.
+    openEditor(todoId, {
+      emphasis: 'owner',
+      overrides: {owner: column.value === 'Unassigned' ? '' : column.value},
+    })
   }
 
   function saveTodo(updatedTodo) {
@@ -244,7 +288,8 @@ function App() {
     setEditorState(null)
   }
 
-  const editingTodo = editorState ? todos.find((todo) => todo.id === editorState.todoId) : null
+  const editingBase = editorState ? todos.find((todo) => todo.id === editorState.todoId) : null
+  const editingTodo = editingBase && editorState.overrides ? {...editingBase, ...editorState.overrides} : editingBase
 
   return (
     <main className="app-shell">
