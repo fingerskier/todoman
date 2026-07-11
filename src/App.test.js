@@ -113,10 +113,28 @@ test('reorders column definitions with drag and drop in the configurator', () =>
   fireEvent.click(within(priorityRow).getByRole('button', { name: /configure columns/i }));
 
   const dataTransfer = createDataTransfer();
-  const nextRow = screen.getByDisplayValue('Next').closest('.column-config-row');
+  const nextHandle = screen.getByLabelText('Drag Next column');
   const nowRow = screen.getByDisplayValue('Now').closest('.column-config-row');
-  fireEvent.dragStart(nextRow, { dataTransfer });
+  fireEvent.dragStart(nextHandle, { dataTransfer });
   fireEvent.drop(nowRow, { dataTransfer });
+  fireEvent.click(screen.getByLabelText(/close column configurator/i));
+
+  const reorderedHeadings = within(priorityRow).getAllByRole('heading').map((heading) => heading.textContent);
+  expect(reorderedHeadings).toEqual(['Priority', 'Next', 'Now', 'Later']);
+});
+
+
+test('keeps the target column position stable when dragging a definition downward', () => {
+  render(<App />);
+
+  const priorityRow = screen.getByLabelText(/priority board row/i);
+  fireEvent.click(within(priorityRow).getByRole('button', { name: /configure columns/i }));
+
+  const dataTransfer = createDataTransfer();
+  const nowHandle = screen.getByLabelText('Drag Now column');
+  const laterRow = screen.getByDisplayValue('Later').closest('.column-config-row');
+  fireEvent.dragStart(nowHandle, { dataTransfer });
+  fireEvent.drop(laterRow, { dataTransfer });
   fireEvent.click(screen.getByLabelText(/close column configurator/i));
 
   const reorderedHeadings = within(priorityRow).getAllByRole('heading').map((heading) => heading.textContent);

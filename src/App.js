@@ -310,13 +310,20 @@ function ColumnConfigurator({rowKey, columns, onAdd, onClose, onDelete, onReorde
           {columns.map((column) => (
             <div
               className="column-config-row"
-              draggable
               key={column.id}
               onDragOver={(event) => event.preventDefault()}
-              onDragStart={(event) => startColumnDrag(event, column.id)}
               onDrop={(event) => dropColumn(event, column.id)}
             >
-              <span className="column-config-row__drag-handle" aria-hidden="true">⋮⋮</span>
+              <span
+                aria-label={`Drag ${column.name} column`}
+                className="column-config-row__drag-handle"
+                draggable
+                onDragStart={(event) => startColumnDrag(event, column.id)}
+                role="button"
+                tabIndex="0"
+              >
+                ⋮⋮
+              </span>
               <label>
                 Column name
                 <input value={column.name} onChange={(event) => onUpdate(rowKey, column.id, 'name', event.target.value)} />
@@ -486,7 +493,8 @@ function App() {
 
       const reorderedColumns = [...orderedColumns]
       const [draggedColumn] = reorderedColumns.splice(draggedIndex, 1)
-      reorderedColumns.splice(targetIndex, 0, draggedColumn)
+      const insertionIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex
+      reorderedColumns.splice(insertionIndex, 0, draggedColumn)
 
       return {
         ...current,
