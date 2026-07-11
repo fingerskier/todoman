@@ -104,3 +104,21 @@ test('configures columns for a board row', () => {
 
   expect(screen.getByRole('heading', { name: 'Blocked' })).toBeInTheDocument();
 });
+
+
+test('reorders column definitions with drag and drop in the configurator', () => {
+  render(<App />);
+
+  const priorityRow = screen.getByLabelText(/priority board row/i);
+  fireEvent.click(within(priorityRow).getByRole('button', { name: /configure columns/i }));
+
+  const dataTransfer = createDataTransfer();
+  const nextRow = screen.getByDisplayValue('Next').closest('.column-config-row');
+  const nowRow = screen.getByDisplayValue('Now').closest('.column-config-row');
+  fireEvent.dragStart(nextRow, { dataTransfer });
+  fireEvent.drop(nowRow, { dataTransfer });
+  fireEvent.click(screen.getByLabelText(/close column configurator/i));
+
+  const reorderedHeadings = within(priorityRow).getAllByRole('heading').map((heading) => heading.textContent);
+  expect(reorderedHeadings).toEqual(['Priority', 'Next', 'Now', 'Later']);
+});
