@@ -1,13 +1,46 @@
 import React, {useEffect, useMemo, useState} from 'react'
 import './App.css'
 
-const STORAGE_KEY = 'todoman.todos.v1'
+const TODOS_STORAGE_KEY = 'todoman.todos.v1'
+const COLUMNS_STORAGE_KEY = 'todoman.columns.v1'
 
-const PRIORITY_COLUMNS = [
-  {name: 'Now', ordinal: 1},
-  {name: 'Next', ordinal: 2},
-  {name: 'Later', ordinal: 3},
-]
+const DEFAULT_COLUMNS = {
+  priority: [
+    {id: 'priority-now', name: 'Now', ordinal: 1},
+    {id: 'priority-next', name: 'Next', ordinal: 2},
+    {id: 'priority-later', name: 'Later', ordinal: 3},
+  ],
+  scheduled: [
+    {id: 'scheduled-2025-q4', name: '2025-Q4', ordinal: 1},
+    {id: 'scheduled-2026-q1', name: '2026-Q1', ordinal: 2},
+    {id: 'scheduled-2026-q2', name: '2026-Q2', ordinal: 3},
+    {id: 'scheduled-unscheduled', name: 'Unscheduled', ordinal: 4},
+  ],
+  delegated: [
+    {id: 'delegated-alex', name: 'Alex', ordinal: 1},
+    {id: 'delegated-morgan', name: 'Morgan', ordinal: 2},
+    {id: 'delegated-taylor', name: 'Taylor', ordinal: 3},
+    {id: 'delegated-unassigned', name: 'Unassigned', ordinal: 4},
+  ],
+}
+
+const ROW_DEFINITIONS = {
+  priority: {
+    title: 'Priority',
+    description: 'Configurable columns sorted left-to-right by ordinal.',
+    addPlaceholder: 'Example: Blocked',
+  },
+  scheduled: {
+    title: 'Scheduled',
+    description: 'Configurable quarter buckets derived from due date.',
+    addPlaceholder: 'Example: 2026-Q3',
+  },
+  delegated: {
+    title: 'Delegated',
+    description: 'Configurable owner buckets derived from owner.',
+    addPlaceholder: 'Example: Jordan',
+  },
+}
 
 const INITIAL_TODOS = [
   {
@@ -48,16 +81,47 @@ const INITIAL_TODOS = [
   },
 ]
 
-function loadTodos() {
+function loadFromStorage(key, fallback) {
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (!stored) return INITIAL_TODOS
+    const stored = window.localStorage.getItem(key)
+    if (!stored) return fallback
 
     const parsed = JSON.parse(stored)
-    return Array.isArray(parsed) ? parsed : INITIAL_TODOS
+    return parsed || fallback
   } catch (error) {
-    return INITIAL_TODOS
+    return fallback
   }
+}
+
+function loadTodos() {
+  const parsed = loadFromStorage(TODOS_STORAGE_KEY, INITIAL_TODOS)
+  return Array.isArray(parsed) ? parsed : INITIAL_TODOS
+}
+
+function loadColumns() {
+  const parsed = loadFromStorage(COLUMNS_STORAGE_KEY, DEFAULT_COLUMNS)
+  return {
+    priority: normalizeColumns(parsed.priority, DEFAULT_COLUMNS.priority),
+    scheduled: normalizeColumns(parsed.scheduled, DEFAULT_COLUMNS.scheduled),
+    delegated: normalizeColumns(parsed.delegated, DEFAULT_COLUMNS.delegated),
+  }
+}
+
+function normalizeColumns(columns, fallback) {
+  const source = Array.isArray(columns) && columns.length ? columns : fallback
+  return source.map((column, index) => ({
+    id: column.id || createColumnId(column.name || `Column ${index + 1}`),
+    name: column.name || `Column ${index + 1}`,
+    ordinal: Number.isFinite(Number(column.ordinal)) ? Number(column.ordinal) : index + 1,
+  }))
+}
+
+function createColumnId(name) {
+  return `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'column'}-${Date.now()}`
+}
+
+function createTodoId() {
+  return `todo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 function getQuarterBucket(dueDate) {
@@ -77,14 +141,8 @@ function bucketToDueDate(bucket) {
   return `${match[1]}-${String(startMonth).padStart(2, '0')}-01`
 }
 
-function quarterSortValue(bucket) {
-  const match = bucket.match(/^(\d{4})-Q([1-4])$/)
-  if (!match) return Number.MAX_SAFE_INTEGER
-  return Number(match[1]) * 10 + Number(match[2])
-}
-
-function uniqueSorted(values, sorter = (a, b) => a.localeCompare(b)) {
-  return Array.from(new Set(values)).sort(sorter)
+function sortColumns(columns) {
+  return [...columns].sort((a, b) => a.ordinal - b.ordinal || a.name.localeCompare(b.name))
 }
 
 function TodoCard({todo, onClick, onDragStart}) {
@@ -128,17 +186,20 @@ function BoardColumn({column, todos, onCardClick, onDragStart, onDropTodo}) {
   )
 }
 
-function BoardRow({title, description, columns, todos, onCardClick, onDragStart, onDropTodo}) {
+function BoardRow({title, description, columns, todos, onCardClick, onConfigure, onDragStart, onDropTodo}) {
   return (
     <section className="board-row" aria-label={`${title} board row`}>
       <div className="board-row__label">
         <h2>{title}</h2>
         <p>{description}</p>
+        <button type="button" className="button button--small button--secondary" onClick={onConfigure}>
+          Configure columns
+        </button>
       </div>
       <div className="board-row__columns">
         {columns.map((column) => (
           <BoardColumn
-            key={`${column.row}-${column.value}`}
+            key={`${column.row}-${column.id}`}
             column={column}
             todos={todos.filter(column.filter)}
             onCardClick={onCardClick}
@@ -151,7 +212,7 @@ function BoardRow({title, description, columns, todos, onCardClick, onDragStart,
   )
 }
 
-function TodoEditor({todo, emphasis, priorityColumns, onClose, onSave}) {
+function TodoEditor({todo, emphasis, priorityColumns, onClose, onDelete, onSave}) {
   const [draft, setDraft] = useState(todo)
 
   function update(field, value) {
@@ -167,13 +228,13 @@ function TodoEditor({todo, emphasis, priorityColumns, onClose, onSave}) {
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <form className="modal" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
         <div className="modal__header">
-          <h2>Edit todo</h2>
+          <h2>{todo.id ? 'Edit todo' : 'Add todo'}</h2>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close editor">×</button>
         </div>
 
         <label>
           Name
-          <input value={draft.name} onChange={(event) => update('name', event.target.value)} />
+          <input required value={draft.name} onChange={(event) => update('name', event.target.value)} />
         </label>
 
         <label className={emphasis === 'due_date' ? 'field-emphasis' : ''}>
@@ -189,7 +250,7 @@ function TodoEditor({todo, emphasis, priorityColumns, onClose, onSave}) {
         <label>
           Priority
           <select value={draft.priority} onChange={(event) => update('priority', event.target.value)}>
-            {priorityColumns.map((column) => <option key={column.name}>{column.name}</option>)}
+            {priorityColumns.map((column) => <option key={column.id}>{column.name}</option>)}
           </select>
         </label>
 
@@ -204,6 +265,8 @@ function TodoEditor({todo, emphasis, priorityColumns, onClose, onSave}) {
         </label>
 
         <div className="modal__actions">
+          {todo.id && <button type="button" className="button button--danger" onClick={() => onDelete(todo.id)}>Delete todo</button>}
+          <span className="modal__action-spacer" />
           <button type="button" className="button button--secondary" onClick={onClose}>Cancel</button>
           <button type="submit" className="button">Save todo</button>
         </div>
@@ -212,43 +275,113 @@ function TodoEditor({todo, emphasis, priorityColumns, onClose, onSave}) {
   )
 }
 
+function ColumnConfigurator({rowKey, columns, onAdd, onClose, onDelete, onUpdate}) {
+  const definition = ROW_DEFINITIONS[rowKey]
+  const [newColumnName, setNewColumnName] = useState('')
+
+  function addColumn(event) {
+    event.preventDefault()
+    onAdd(rowKey, newColumnName)
+    setNewColumnName('')
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <div className="modal" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="modal__header">
+          <h2>Configure {definition.title} columns</h2>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close column configurator">×</button>
+        </div>
+
+        <div className="column-config-list">
+          {columns.map((column) => (
+            <div className="column-config-row" key={column.id}>
+              <label>
+                Column name
+                <input value={column.name} onChange={(event) => onUpdate(rowKey, column.id, 'name', event.target.value)} />
+              </label>
+              <label>
+                Ordinal
+                <input type="number" value={column.ordinal} onChange={(event) => onUpdate(rowKey, column.id, 'ordinal', event.target.value)} />
+              </label>
+              <button type="button" className="button button--danger" onClick={() => onDelete(rowKey, column.id)}>Delete</button>
+            </div>
+          ))}
+        </div>
+
+        <form className="column-add-form" onSubmit={addColumn}>
+          <label>
+            Add column
+            <input value={newColumnName} placeholder={definition.addPlaceholder} onChange={(event) => setNewColumnName(event.target.value)} />
+          </label>
+          <button type="submit" className="button">Add column</button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [todos, setTodos] = useState(loadTodos)
+  const [columnsByRow, setColumnsByRow] = useState(loadColumns)
   const [editorState, setEditorState] = useState(null)
+  const [configuringRow, setConfiguringRow] = useState(null)
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(todos))
+      window.localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(todos))
     } catch (error) {
       // Ignore write failures (e.g. storage disabled or over quota).
     }
   }, [todos])
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(columnsByRow))
+    } catch (error) {
+      // Ignore write failures (e.g. storage disabled or over quota).
+    }
+  }, [columnsByRow])
+
   const activeTodos = todos.filter((todo) => todo.active)
-  const priorityColumns = useMemo(() => [...PRIORITY_COLUMNS].sort((a, b) => a.ordinal - b.ordinal), [])
-  const scheduledBuckets = uniqueSorted(activeTodos.map((todo) => getQuarterBucket(todo.due_date)), (a, b) => quarterSortValue(a) - quarterSortValue(b))
-  const ownerBuckets = uniqueSorted(activeTodos.map((todo) => todo.owner || 'Unassigned'))
+  const priorityColumns = useMemo(() => sortColumns(columnsByRow.priority), [columnsByRow.priority])
 
   const rows = [
     {
-      title: 'Priority',
-      description: 'Configurable columns sorted left-to-right by ordinal.',
-      columns: priorityColumns.map((column) => ({row: 'priority', value: column.name, label: column.name, filter: (todo) => todo.priority === column.name})),
+      rowKey: 'priority',
+      ...ROW_DEFINITIONS.priority,
+      columns: priorityColumns.map((column) => ({...column, row: 'priority', value: column.name, label: column.name, filter: (todo) => todo.priority === column.name})),
     },
     {
-      title: 'Scheduled',
-      description: 'Quarter buckets derived from due date.',
-      columns: scheduledBuckets.map((bucket) => ({row: 'scheduled', value: bucket, label: bucket, filter: (todo) => getQuarterBucket(todo.due_date) === bucket})),
+      rowKey: 'scheduled',
+      ...ROW_DEFINITIONS.scheduled,
+      columns: sortColumns(columnsByRow.scheduled).map((column) => ({...column, row: 'scheduled', value: column.name, label: column.name, filter: (todo) => getQuarterBucket(todo.due_date) === column.name})),
     },
     {
-      title: 'Delegated',
-      description: 'Owner buckets derived from owner.',
-      columns: ownerBuckets.map((owner) => ({row: 'delegated', value: owner, label: owner, filter: (todo) => (todo.owner || 'Unassigned') === owner})),
+      rowKey: 'delegated',
+      ...ROW_DEFINITIONS.delegated,
+      columns: sortColumns(columnsByRow.delegated).map((column) => ({...column, row: 'delegated', value: column.name, label: column.name, filter: (todo) => (todo.owner || 'Unassigned') === column.name})),
     },
   ]
 
   function openEditor(todoId, {emphasis = null, overrides = null} = {}) {
     setEditorState({todoId, emphasis, overrides})
+  }
+
+  function addTodo() {
+    setEditorState({
+      todoId: null,
+      emphasis: null,
+      overrides: {
+        id: '',
+        name: '',
+        due_date: '',
+        owner: '',
+        details: '',
+        active: true,
+        priority: priorityColumns[0]?.name || '',
+      },
+    })
   }
 
   function handleDragStart(event, todoId) {
@@ -284,11 +417,46 @@ function App() {
   }
 
   function saveTodo(updatedTodo) {
-    setTodos((current) => current.map((todo) => todo.id === updatedTodo.id ? updatedTodo : todo))
+    setTodos((current) => {
+      if (!updatedTodo.id) return [...current, {...updatedTodo, id: createTodoId()}]
+      return current.map((todo) => todo.id === updatedTodo.id ? updatedTodo : todo)
+    })
     setEditorState(null)
   }
 
-  const editingBase = editorState ? todos.find((todo) => todo.id === editorState.todoId) : null
+  function deleteTodo(todoId) {
+    setTodos((current) => current.filter((todo) => todo.id !== todoId))
+    setEditorState(null)
+  }
+
+  function addColumn(rowKey, columnName) {
+    const name = columnName.trim()
+    if (!name) return
+
+    setColumnsByRow((current) => ({
+      ...current,
+      [rowKey]: [
+        ...current[rowKey],
+        {id: createColumnId(name), name, ordinal: Math.max(0, ...current[rowKey].map((column) => Number(column.ordinal) || 0)) + 1},
+      ],
+    }))
+  }
+
+  function updateColumn(rowKey, columnId, field, value) {
+    setColumnsByRow((current) => ({
+      ...current,
+      [rowKey]: current[rowKey].map((column) => column.id === columnId ? {...column, [field]: field === 'ordinal' ? Number(value) : value} : column),
+    }))
+  }
+
+  function deleteColumn(rowKey, columnId) {
+    setColumnsByRow((current) => ({
+      ...current,
+      [rowKey]: current[rowKey].filter((column) => column.id !== columnId),
+    }))
+  }
+
+  const editingBase = editorState?.todoId ? todos.find((todo) => todo.id === editorState.todoId) : editorState?.overrides
   const editingTodo = editingBase && editorState.overrides ? {...editingBase, ...editorState.overrides} : editingBase
 
   return (
@@ -297,6 +465,7 @@ function App() {
         <p className="eyebrow">Todoman</p>
         <h1>Three-lane todo planning board</h1>
         <p>Plan active work by priority, due-date quarter, and owner delegation.</p>
+        <button type="button" className="button hero__action" onClick={addTodo}>Add todo</button>
       </header>
 
       <div className="board">
@@ -306,6 +475,7 @@ function App() {
             {...row}
             todos={activeTodos}
             onCardClick={openEditor}
+            onConfigure={() => setConfiguringRow(row.rowKey)}
             onDragStart={handleDragStart}
             onDropTodo={handleDrop}
           />
@@ -318,7 +488,19 @@ function App() {
           emphasis={editorState.emphasis}
           priorityColumns={priorityColumns}
           onClose={() => setEditorState(null)}
+          onDelete={deleteTodo}
           onSave={saveTodo}
+        />
+      )}
+
+      {configuringRow && (
+        <ColumnConfigurator
+          rowKey={configuringRow}
+          columns={sortColumns(columnsByRow[configuringRow])}
+          onAdd={addColumn}
+          onClose={() => setConfiguringRow(null)}
+          onDelete={deleteColumn}
+          onUpdate={updateColumn}
         />
       )}
     </main>

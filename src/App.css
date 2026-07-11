@@ -19,6 +19,7 @@ button, input, select, textarea { font: inherit; }
 .app-shell { min-height: 100vh; padding: 32px; }
 
 .hero { max-width: 960px; margin: 0 auto 28px; }
+.hero__action { margin-top: 20px; }
 .hero h1 { font-size: clamp(2.2rem, 6vw, 4.8rem); line-height: 0.95; margin: 0 0 16px; }
 .hero p { color: var(--muted); font-size: 1.1rem; margin: 0; }
 .eyebrow { color: var(--accent) !important; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
@@ -26,7 +27,7 @@ button, input, select, textarea { font: inherit; }
 .board { display: grid; gap: 22px; }
 .board-row { display: grid; grid-template-columns: minmax(180px, 230px) 1fr; gap: 18px; padding: 18px; background: rgba(255, 255, 255, 0.045); border: 1px solid var(--border); border-radius: 28px; box-shadow: var(--shadow); }
 .board-row__label h2 { margin: 0 0 8px; }
-.board-row__label p { color: var(--muted); margin: 0; }
+.board-row__label p { color: var(--muted); margin: 0 0 16px; }
 .board-row__columns { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: 14px; overflow-x: auto; padding-bottom: 4px; }
 .board-column { min-height: 190px; padding: 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 20px; }
 .board-column__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -52,10 +53,17 @@ button, input, select, textarea { font: inherit; }
 .icon-button { border: 0; background: transparent; cursor: pointer; font-size: 2rem; line-height: 1; }
 .button { border: 0; border-radius: 999px; background: var(--accent-strong); color: white; cursor: pointer; font-weight: 800; padding: 10px 16px; }
 .button--secondary { background: #e6edf5; color: #132033; }
+.button--danger { background: #d94f5c; color: white; }
+.button--small { font-size: 0.88rem; padding: 8px 12px; }
+.modal__action-spacer { flex: 1; }
+.column-config-list { display: grid; gap: 12px; max-height: 48vh; overflow: auto; padding-right: 4px; }
+.column-config-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px auto; gap: 10px; align-items: end; padding: 12px; background: #edf4fb; border: 1px solid #d9e3ee; border-radius: 16px; }
+.column-add-form { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; padding-top: 12px; border-top: 1px solid #d9e3ee; }
 
 @keyframes pulse-field { 50% { transform: scale(1.02); } }
 
 @media (max-width: 780px) {
   .app-shell { padding: 20px; }
   .board-row { grid-template-columns: 1fr; }
+  .column-config-row, .column-add-form { grid-template-columns: 1fr; }
 }
