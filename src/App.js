@@ -275,7 +275,7 @@ function TodoEditor({todo, emphasis, priorityColumns, onClose, onDelete, onSave}
   )
 }
 
-function ColumnConfigurator({rowKey, columns, onAdd, onClose, onDelete, onUpdate}) {
+function ColumnConfigurator({rowKey, columns, onAdd, onClose, onDelete, onReorder, onUpdate}) {
   const definition = ROW_DEFINITIONS[rowKey]
   const [newColumnName, setNewColumnName] = useState('')
 
@@ -283,6 +283,19 @@ function ColumnConfigurator({rowKey, columns, onAdd, onClose, onDelete, onUpdate
     event.preventDefault()
     onAdd(rowKey, newColumnName)
     setNewColumnName('')
+  }
+
+  function startColumnDrag(event, columnId) {
+    event.dataTransfer.setData('text/todoman-column-id', columnId)
+    event.dataTransfer.effectAllowed = 'move'
+  }
+
+  function dropColumn(event, targetColumnId) {
+    event.preventDefault()
+    const draggedColumnId = event.dataTransfer.getData('text/todoman-column-id')
+    if (!draggedColumnId || draggedColumnId === targetColumnId) return
+
+    onReorder(rowKey, draggedColumnId, targetColumnId)
   }
 
   return (
@@ -295,7 +308,22 @@ function ColumnConfigurator({rowKey, columns, onAdd, onClose, onDelete, onUpdate
 
         <div className="column-config-list">
           {columns.map((column) => (
-            <div className="column-config-row" key={column.id}>
+            <div
+              className="column-config-row"
+              key={column.id}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => dropColumn(event, column.id)}
+            >
+              <span
+                aria-label={`Drag ${column.name} column`}
+                className="column-config-row__drag-handle"
+                draggable
+                onDragStart={(event) => startColumnDrag(event, column.id)}
+                role="button"
+                tabIndex="0"
+              >
+                ⋮⋮
+              </span>
               <label>
                 Column name
                 <input value={column.name} onChange={(event) => onUpdate(rowKey, column.id, 'name', event.target.value)} />
@@ -456,6 +484,25 @@ function App() {
     }))
   }
 
+  function reorderColumns(rowKey, draggedColumnId, targetColumnId) {
+    setColumnsByRow((current) => {
+      const orderedColumns = sortColumns(current[rowKey])
+      const draggedIndex = orderedColumns.findIndex((column) => column.id === draggedColumnId)
+      const targetIndex = orderedColumns.findIndex((column) => column.id === targetColumnId)
+      if (draggedIndex === -1 || targetIndex === -1) return current
+
+      const reorderedColumns = [...orderedColumns]
+      const [draggedColumn] = reorderedColumns.splice(draggedIndex, 1)
+      const insertionIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex
+      reorderedColumns.splice(insertionIndex, 0, draggedColumn)
+
+      return {
+        ...current,
+        [rowKey]: reorderedColumns.map((column, index) => ({...column, ordinal: index + 1})),
+      }
+    })
+  }
+
   const editingBase = editorState?.todoId ? todos.find((todo) => todo.id === editorState.todoId) : editorState?.overrides
   const editingTodo = editingBase && editorState.overrides ? {...editingBase, ...editorState.overrides} : editingBase
 
@@ -498,6 +545,7 @@ function App() {
           onAdd={addColumn}
           onClose={() => setConfiguringRow(null)}
           onDelete={deleteColumn}
+          onReorder={reorderColumns}
           onUpdate={updateColumn}
         />
       )}

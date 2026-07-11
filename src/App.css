@@ -57,7 +57,9 @@ button, input, select, textarea { font: inherit; }
 .button--small { font-size: 0.88rem; padding: 8px 12px; }
 .modal__action-spacer { flex: 1; }
 .column-config-list { display: grid; gap: 12px; max-height: 48vh; overflow: auto; padding-right: 4px; }
-.column-config-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px auto; gap: 10px; align-items: end; padding: 12px; background: #edf4fb; border: 1px solid #d9e3ee; border-radius: 16px; }
+.column-config-row { display: grid; grid-template-columns: auto minmax(0, 1fr) 110px auto; gap: 10px; align-items: end; padding: 12px; background: #edf4fb; border: 1px solid #d9e3ee; border-radius: 16px; }
+.column-config-row__drag-handle { align-self: center; background: transparent; border: 0; color: #7890aa; cursor: grab; font-size: 1.2rem; font-weight: 800; letter-spacing: -0.2em; padding-right: 4px; user-select: none; }
+.column-config-row__drag-handle:active { cursor: grabbing; }
 .column-add-form { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; padding-top: 12px; border-top: 1px solid #d9e3ee; }
 
 @keyframes pulse-field { 50% { transform: scale(1.02); } }
@@ -66,4 +68,5 @@ button, input, select, textarea { font: inherit; }
   .app-shell { padding: 20px; }
   .board-row { grid-template-columns: 1fr; }
   .column-config-row, .column-add-form { grid-template-columns: 1fr; }
+  .column-config-row__drag-handle { display: none; }
 }
