@@ -463,8 +463,6 @@ function App() {
     <main className="app-shell">
       <header className="hero">
         <p className="eyebrow">Todoman</p>
-        <h1>Three-lane todo planning board</h1>
-        <p>Plan active work by priority, due-date quarter, and owner delegation.</p>
         <button type="button" className="button hero__action" onClick={addTodo}>Add todo</button>
       </header>
 
