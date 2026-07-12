@@ -97,6 +97,26 @@ test('dropping a card on a delegated column applies the target owner', () => {
   expect(within(updatedAlexColumn).getByText(/draft customer update/i)).toBeInTheDocument();
 });
 
+test('dropping a card on a scheduled column marks it as self-owned', () => {
+  render(<App />);
+
+  const dataTransfer = createDataTransfer();
+  const card = screen.getAllByRole('button', { name: /finalize launch checklist/i })[0];
+  fireEvent.dragStart(card, { dataTransfer });
+
+  const q1Column = screen.getByRole('heading', { name: '2026-Q1' }).closest('.board-column');
+  fireEvent.drop(q1Column, { dataTransfer });
+
+  expect(screen.getByLabelText(/owner/i)).toHaveValue('me');
+  expect(screen.getByLabelText(/due date/i)).toHaveValue('2026-01-15');
+
+  fireEvent.click(screen.getByRole('button', { name: /save todo/i }));
+
+  const scheduledRow = screen.getByLabelText(/scheduled board row/i);
+  const delegatedRow = screen.getByLabelText(/delegated board row/i);
+  expect(within(scheduledRow).getByText('Finalize launch checklist')).toBeInTheDocument();
+  expect(within(delegatedRow).queryByText('Finalize launch checklist')).not.toBeInTheDocument();
+});
 
 test('dropping a card on a priority column clears scheduling and delegation fields', () => {
   render(<App />);

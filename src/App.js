@@ -451,7 +451,10 @@ function App() {
       const alreadyInBucket = target && getQuarterBucket(target.due_date) === column.value
       openEditor(todoId, {
         emphasis: 'due_date',
-        overrides: alreadyInBucket ? null : {due_date: bucketToDueDate(column.value)},
+        overrides: {
+          owner: 'me',
+          ...(alreadyInBucket ? {} : {due_date: bucketToDueDate(column.value)}),
+        },
       })
       return
     }
