@@ -133,6 +133,19 @@ function getQuarterBucket(dueDate) {
   return `${year}-Q${Math.ceil(month / 3)}`
 }
 
+function isMeOwner(owner) {
+  return String(owner || '').trim().toLowerCase() === 'me'
+}
+
+function getTodoRow(todo) {
+  if (String(todo.due_date || '').trim()) return 'scheduled'
+
+  const owner = String(todo.owner || '').trim()
+  if (owner && !isMeOwner(owner)) return 'delegated'
+
+  return 'priority'
+}
+
 function bucketToDueDate(bucket) {
   const match = bucket.match(/^(\d{4})-Q([1-4])$/)
   if (!match) return ''
@@ -378,17 +391,17 @@ function App() {
     {
       rowKey: 'priority',
       ...ROW_DEFINITIONS.priority,
-      columns: priorityColumns.map((column) => ({...column, row: 'priority', value: column.name, label: column.name, filter: (todo) => todo.priority === column.name})),
+      columns: priorityColumns.map((column) => ({...column, row: 'priority', value: column.name, label: column.name, filter: (todo) => getTodoRow(todo) === 'priority' && todo.priority === column.name})),
     },
     {
       rowKey: 'scheduled',
       ...ROW_DEFINITIONS.scheduled,
-      columns: sortColumns(columnsByRow.scheduled).map((column) => ({...column, row: 'scheduled', value: column.name, label: column.name, filter: (todo) => getQuarterBucket(todo.due_date) === column.name})),
+      columns: sortColumns(columnsByRow.scheduled).map((column) => ({...column, row: 'scheduled', value: column.name, label: column.name, filter: (todo) => getTodoRow(todo) === 'scheduled' && getQuarterBucket(todo.due_date) === column.name})),
     },
     {
       rowKey: 'delegated',
       ...ROW_DEFINITIONS.delegated,
-      columns: sortColumns(columnsByRow.delegated).map((column) => ({...column, row: 'delegated', value: column.name, label: column.name, filter: (todo) => (todo.owner || 'Unassigned') === column.name})),
+      columns: sortColumns(columnsByRow.delegated).map((column) => ({...column, row: 'delegated', value: column.name, label: column.name, filter: (todo) => getTodoRow(todo) === 'delegated' && String(todo.owner || '').trim() === column.name})),
     },
   ]
 
@@ -423,7 +436,7 @@ function App() {
     if (!todoId) return
 
     if (column.row === 'priority') {
-      setTodos((current) => current.map((todo) => todo.id === todoId ? {...todo, priority: column.value} : todo))
+      setTodos((current) => current.map((todo) => todo.id === todoId ? {...todo, due_date: '', owner: '', priority: column.value} : todo))
       return
     }
 
@@ -437,10 +450,10 @@ function App() {
       return
     }
 
-    // Delegated columns: pre-fill the target owner so saving commits the move.
+    // Delegated columns: clear the date and pre-fill the target owner so saving commits the move.
     openEditor(todoId, {
       emphasis: 'owner',
-      overrides: {owner: column.value === 'Unassigned' ? '' : column.value},
+      overrides: {due_date: '', owner: column.value === 'Unassigned' ? '' : column.value},
     })
   }
 

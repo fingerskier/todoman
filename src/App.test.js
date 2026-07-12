@@ -26,6 +26,37 @@ test('renders the three planning board rows', () => {
   expect(screen.getByText('2025-Q4')).toBeInTheDocument();
 });
 
+
+test('shows each todo card in exactly one row based on date, owner, then priority', () => {
+  window.localStorage.setItem('todoman.todos.v1', JSON.stringify([
+    { id: 'dated-delegated', name: 'Dated delegated task', due_date: '2026-01-15', owner: 'Alex', details: '', active: true, priority: 'Now' },
+    { id: 'owned-undated', name: 'Owned undated task', due_date: '', owner: 'Morgan', details: '', active: true, priority: 'Next' },
+    { id: 'mine-undated', name: 'Mine undated task', due_date: '', owner: 'me', details: '', active: true, priority: 'Later' },
+    { id: 'unowned-undated', name: 'Unowned undated task', due_date: '', owner: '', details: '', active: true, priority: 'Now' },
+  ]));
+
+  render(<App />);
+
+  const priorityRow = screen.getByLabelText(/priority board row/i);
+  const scheduledRow = screen.getByLabelText(/scheduled board row/i);
+  const delegatedRow = screen.getByLabelText(/delegated board row/i);
+
+  expect(within(scheduledRow).getByText('Dated delegated task')).toBeInTheDocument();
+  expect(within(priorityRow).queryByText('Dated delegated task')).not.toBeInTheDocument();
+  expect(within(delegatedRow).queryByText('Dated delegated task')).not.toBeInTheDocument();
+
+  expect(within(delegatedRow).getByText('Owned undated task')).toBeInTheDocument();
+  expect(within(priorityRow).queryByText('Owned undated task')).not.toBeInTheDocument();
+  expect(within(scheduledRow).queryByText('Owned undated task')).not.toBeInTheDocument();
+
+  expect(within(priorityRow).getByText('Mine undated task')).toBeInTheDocument();
+  expect(within(priorityRow).getByText('Unowned undated task')).toBeInTheDocument();
+  expect(screen.getAllByText('Dated delegated task')).toHaveLength(1);
+  expect(screen.getAllByText('Owned undated task')).toHaveLength(1);
+  expect(screen.getAllByText('Mine undated task')).toHaveLength(1);
+  expect(screen.getAllByText('Unowned undated task')).toHaveLength(1);
+});
+
 test('opens the editor when a todo card is clicked', () => {
   render(<App />);
 
@@ -45,14 +76,35 @@ test('dropping a card on a delegated column applies the target owner', () => {
   const alexColumn = screen.getByRole('heading', { name: 'Alex' }).closest('.board-column');
   fireEvent.drop(alexColumn, { dataTransfer });
 
-  // The editor opens pre-filled with the dropped column's owner...
+  // The editor opens pre-filled with the dropped column's owner and clears the date...
   expect(screen.getByLabelText(/owner/i)).toHaveValue('Alex');
+  expect(screen.getByLabelText(/due date/i)).toHaveValue('');
 
-  // ...so saving unchanged actually commits the move.
+  // ...so saving unchanged actually commits the move out of Scheduled and into Delegated.
   fireEvent.click(screen.getByRole('button', { name: /save todo/i }));
 
   const updatedAlexColumn = screen.getByRole('heading', { name: 'Alex' }).closest('.board-column');
   expect(within(updatedAlexColumn).getByText(/draft customer update/i)).toBeInTheDocument();
+});
+
+
+test('dropping a card on a priority column clears scheduling and delegation fields', () => {
+  render(<App />);
+
+  const dataTransfer = createDataTransfer();
+  const card = screen.getAllByRole('button', { name: /finalize launch checklist/i })[0];
+  fireEvent.dragStart(card, { dataTransfer });
+
+  const laterColumn = screen.getByRole('heading', { name: 'Later' }).closest('.board-column');
+  fireEvent.drop(laterColumn, { dataTransfer });
+
+  const priorityRow = screen.getByLabelText(/priority board row/i);
+  const scheduledRow = screen.getByLabelText(/scheduled board row/i);
+  const delegatedRow = screen.getByLabelText(/delegated board row/i);
+
+  expect(within(priorityRow).getByText('Finalize launch checklist')).toBeInTheDocument();
+  expect(within(scheduledRow).queryByText('Finalize launch checklist')).not.toBeInTheDocument();
+  expect(within(delegatedRow).queryByText('Finalize launch checklist')).not.toBeInTheDocument();
 });
 
 test('persists edits across reloads via localStorage', () => {
