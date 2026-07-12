@@ -70,24 +70,41 @@ test('dropping a card on a delegated column applies the target owner', () => {
   render(<App />);
 
   const dataTransfer = createDataTransfer();
-  fireEvent.click(screen.getAllByRole('button', { name: /draft customer update/i })[0]);
-  fireEvent.change(screen.getByLabelText(/due date/i), { target: { value: '' } });
-  fireEvent.click(screen.getByRole('button', { name: /save todo/i }));
-
-  const card = screen.getByRole('button', { name: /draft customer update/i });
+  const card = screen.getAllByRole('button', { name: /draft customer update/i })[0];
   fireEvent.dragStart(card, { dataTransfer });
 
   const alexColumn = screen.getByRole('heading', { name: 'Alex' }).closest('.board-column');
   fireEvent.drop(alexColumn, { dataTransfer });
 
-  // The editor opens pre-filled with the dropped column's owner...
+  // The editor opens pre-filled with the dropped column's owner and clears the date...
   expect(screen.getByLabelText(/owner/i)).toHaveValue('Alex');
+  expect(screen.getByLabelText(/due date/i)).toHaveValue('');
 
-  // ...so saving unchanged actually commits the move.
+  // ...so saving unchanged actually commits the move out of Scheduled and into Delegated.
   fireEvent.click(screen.getByRole('button', { name: /save todo/i }));
 
   const updatedAlexColumn = screen.getByRole('heading', { name: 'Alex' }).closest('.board-column');
   expect(within(updatedAlexColumn).getByText(/draft customer update/i)).toBeInTheDocument();
+});
+
+
+test('dropping a card on a priority column clears scheduling and delegation fields', () => {
+  render(<App />);
+
+  const dataTransfer = createDataTransfer();
+  const card = screen.getAllByRole('button', { name: /finalize launch checklist/i })[0];
+  fireEvent.dragStart(card, { dataTransfer });
+
+  const laterColumn = screen.getByRole('heading', { name: 'Later' }).closest('.board-column');
+  fireEvent.drop(laterColumn, { dataTransfer });
+
+  const priorityRow = screen.getByLabelText(/priority board row/i);
+  const scheduledRow = screen.getByLabelText(/scheduled board row/i);
+  const delegatedRow = screen.getByLabelText(/delegated board row/i);
+
+  expect(within(priorityRow).getByText('Finalize launch checklist')).toBeInTheDocument();
+  expect(within(scheduledRow).queryByText('Finalize launch checklist')).not.toBeInTheDocument();
+  expect(within(delegatedRow).queryByText('Finalize launch checklist')).not.toBeInTheDocument();
 });
 
 test('persists edits across reloads via localStorage', () => {

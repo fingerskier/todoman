@@ -138,7 +138,7 @@ function isMeOwner(owner) {
 }
 
 function getTodoRow(todo) {
-  if (todo.due_date) return 'scheduled'
+  if (String(todo.due_date || '').trim()) return 'scheduled'
 
   const owner = String(todo.owner || '').trim()
   if (owner && !isMeOwner(owner)) return 'delegated'
@@ -436,7 +436,7 @@ function App() {
     if (!todoId) return
 
     if (column.row === 'priority') {
-      setTodos((current) => current.map((todo) => todo.id === todoId ? {...todo, priority: column.value} : todo))
+      setTodos((current) => current.map((todo) => todo.id === todoId ? {...todo, due_date: '', owner: '', priority: column.value} : todo))
       return
     }
 
@@ -450,10 +450,10 @@ function App() {
       return
     }
 
-    // Delegated columns: pre-fill the target owner so saving commits the move.
+    // Delegated columns: clear the date and pre-fill the target owner so saving commits the move.
     openEditor(todoId, {
       emphasis: 'owner',
-      overrides: {owner: column.value === 'Unassigned' ? '' : column.value},
+      overrides: {due_date: '', owner: column.value === 'Unassigned' ? '' : column.value},
     })
   }
 
