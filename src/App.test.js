@@ -27,10 +27,12 @@ test('renders the three planning board rows', () => {
 });
 
 
-test('shows each todo card in exactly one row based on date, owner, then priority', () => {
+test('shows each todo card in exactly one row based on owner, date, then priority', () => {
   window.localStorage.setItem('todoman.todos.v1', JSON.stringify([
     { id: 'dated-delegated', name: 'Dated delegated task', due_date: '2026-01-15', owner: 'Alex', details: '', active: true, priority: 'Now' },
     { id: 'owned-undated', name: 'Owned undated task', due_date: '', owner: 'Morgan', details: '', active: true, priority: 'Next' },
+    { id: 'dated-mine', name: 'Dated mine task', due_date: '2026-01-15', owner: 'me', details: '', active: true, priority: 'Later' },
+    { id: 'dated-unowned', name: 'Dated unowned task', due_date: '2026-01-15', owner: '', details: '', active: true, priority: 'Now' },
     { id: 'mine-undated', name: 'Mine undated task', due_date: '', owner: 'me', details: '', active: true, priority: 'Later' },
     { id: 'unowned-undated', name: 'Unowned undated task', due_date: '', owner: '', details: '', active: true, priority: 'Now' },
   ]));
@@ -41,29 +43,37 @@ test('shows each todo card in exactly one row based on date, owner, then priorit
   const scheduledRow = screen.getByLabelText(/scheduled board row/i);
   const delegatedRow = screen.getByLabelText(/delegated board row/i);
 
-  expect(within(scheduledRow).getByText('Dated delegated task')).toBeInTheDocument();
+  expect(within(delegatedRow).getByText('Dated delegated task')).toBeInTheDocument();
   expect(within(priorityRow).queryByText('Dated delegated task')).not.toBeInTheDocument();
-  expect(within(delegatedRow).queryByText('Dated delegated task')).not.toBeInTheDocument();
+  expect(within(scheduledRow).queryByText('Dated delegated task')).not.toBeInTheDocument();
 
   expect(within(delegatedRow).getByText('Owned undated task')).toBeInTheDocument();
   expect(within(priorityRow).queryByText('Owned undated task')).not.toBeInTheDocument();
   expect(within(scheduledRow).queryByText('Owned undated task')).not.toBeInTheDocument();
 
+  expect(within(scheduledRow).getByText('Dated mine task')).toBeInTheDocument();
+  expect(within(scheduledRow).getByText('Dated unowned task')).toBeInTheDocument();
   expect(within(priorityRow).getByText('Mine undated task')).toBeInTheDocument();
   expect(within(priorityRow).getByText('Unowned undated task')).toBeInTheDocument();
   expect(screen.getAllByText('Dated delegated task')).toHaveLength(1);
   expect(screen.getAllByText('Owned undated task')).toHaveLength(1);
+  expect(screen.getAllByText('Dated mine task')).toHaveLength(1);
+  expect(screen.getAllByText('Dated unowned task')).toHaveLength(1);
   expect(screen.getAllByText('Mine undated task')).toHaveLength(1);
   expect(screen.getAllByText('Unowned undated task')).toHaveLength(1);
 });
 
-test('opens the editor when a todo card is clicked', () => {
+test('opens the editor when a todo card is clicked and selects the name input', () => {
   render(<App />);
 
   fireEvent.click(screen.getAllByRole('button', { name: /finalize launch checklist/i })[0]);
 
+  const nameInput = screen.getByLabelText(/name/i);
   expect(screen.getByRole('heading', { name: /edit todo/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/due date/i)).toHaveValue('2026-01-15');
+  expect(nameInput).toHaveFocus();
+  expect(nameInput.selectionStart).toBe(0);
+  expect(nameInput.selectionEnd).toBe(nameInput.value.length);
 });
 
 test('dropping a card on a delegated column applies the target owner', () => {
