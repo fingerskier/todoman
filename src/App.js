@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react'
+import React, {useEffect, useMemo, useRef, useState} from 'react'
 import './App.css'
 
 const TODOS_STORAGE_KEY = 'todoman.todos.v1'
@@ -138,10 +138,10 @@ function isMeOwner(owner) {
 }
 
 function getTodoRow(todo) {
-  if (String(todo.due_date || '').trim()) return 'scheduled'
-
   const owner = String(todo.owner || '').trim()
   if (owner && !isMeOwner(owner)) return 'delegated'
+
+  if (String(todo.due_date || '').trim()) return 'scheduled'
 
   return 'priority'
 }
@@ -227,6 +227,12 @@ function BoardRow({title, description, columns, todos, onCardClick, onConfigure,
 
 function TodoEditor({todo, emphasis, priorityColumns, onClose, onDelete, onSave}) {
   const [draft, setDraft] = useState(todo)
+  const firstInputRef = useRef(null)
+
+  useEffect(() => {
+    firstInputRef.current?.focus()
+    firstInputRef.current?.select()
+  }, [todo.id])
 
   function update(field, value) {
     setDraft((current) => ({...current, [field]: value}))
@@ -247,17 +253,17 @@ function TodoEditor({todo, emphasis, priorityColumns, onClose, onDelete, onSave}
 
         <label>
           Name
-          <input required value={draft.name} onChange={(event) => update('name', event.target.value)} />
+          <input ref={firstInputRef} required value={draft.name} onChange={(event) => update('name', event.target.value)} />
         </label>
 
         <label className={emphasis === 'due_date' ? 'field-emphasis' : ''}>
           Due date
-          <input type="date" value={draft.due_date} onChange={(event) => update('due_date', event.target.value)} autoFocus={emphasis === 'due_date'} />
+          <input type="date" value={draft.due_date} onChange={(event) => update('due_date', event.target.value)} />
         </label>
 
         <label className={emphasis === 'owner' ? 'field-emphasis' : ''}>
           Owner
-          <input value={draft.owner} onChange={(event) => update('owner', event.target.value)} autoFocus={emphasis === 'owner'} />
+          <input value={draft.owner} onChange={(event) => update('owner', event.target.value)} />
         </label>
 
         <label>
@@ -445,7 +451,10 @@ function App() {
       const alreadyInBucket = target && getQuarterBucket(target.due_date) === column.value
       openEditor(todoId, {
         emphasis: 'due_date',
-        overrides: alreadyInBucket ? null : {due_date: bucketToDueDate(column.value)},
+        overrides: {
+          owner: 'me',
+          ...(alreadyInBucket ? {} : {due_date: bucketToDueDate(column.value)}),
+        },
       })
       return
     }

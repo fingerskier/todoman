@@ -18,11 +18,11 @@ button, input, select, textarea { font: inherit; }
 
 .app-shell { min-height: 100vh; padding: 32px; }
 
-.hero { max-width: 960px; margin: 0 auto 28px; }
-.hero__action { margin-top: 20px; }
+.hero { inset: 24px 32px auto 32px; margin: 0; pointer-events: none; position: fixed; z-index: 5; }
+.hero__action { position: absolute; right: 0; top: 0; pointer-events: auto; }
 .hero h1 { font-size: clamp(2.2rem, 6vw, 4.8rem); line-height: 0.95; margin: 0 0 16px; }
 .hero p { color: var(--muted); font-size: 1.1rem; margin: 0; }
-.eyebrow { color: var(--accent) !important; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
+.eyebrow { color: var(--accent) !important; font-weight: 800; letter-spacing: 0.2em; margin: 0; pointer-events: auto; text-transform: uppercase; }
 
 .board { display: grid; gap: 22px; }
 .board-row { display: grid; grid-template-columns: minmax(180px, 230px) 1fr; gap: 18px; padding: 18px; background: rgba(255, 255, 255, 0.045); border: 1px solid var(--border); border-radius: 28px; box-shadow: var(--shadow); }
@@ -66,6 +66,7 @@ button, input, select, textarea { font: inherit; }
 
 @media (max-width: 780px) {
   .app-shell { padding: 20px; }
+  .hero { inset: 18px 20px auto 20px; }
   .board-row { grid-template-columns: 1fr; }
   .column-config-row, .column-add-form { grid-template-columns: 1fr; }
   .column-config-row__drag-handle { display: none; }
