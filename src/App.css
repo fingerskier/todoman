@@ -71,3 +71,19 @@ button, input, select, textarea { font: inherit; }
   .column-config-row, .column-add-form { grid-template-columns: 1fr; }
   .column-config-row__drag-handle { display: none; }
 }
+
+.brand { align-items: center; display: inline-flex; gap: 12px; pointer-events: auto; }
+.brand__logo { width: 48px; height: 48px; border-radius: 14px; box-shadow: 0 10px 30px rgba(113, 227, 196, 0.25); }
+.hero__actions { display: flex; gap: 10px; pointer-events: auto; position: absolute; right: 0; top: 0; }
+.search-status { bottom: 22px; left: 32px; margin: 0; position: fixed; z-index: 4; background: rgba(35, 184, 149, 0.16); border: 1px solid rgba(113, 227, 196, 0.45); border-radius: 999px; color: var(--text); padding: 10px 14px; }
+.todo-card--search-match { border-color: #ffd166; box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.28), 0 14px 36px rgba(255, 209, 102, 0.12); }
+.todo-card--duplicate { border-color: #ff6b81; box-shadow: 0 0 0 3px rgba(255, 107, 129, 0.25); }
+.todo-card--search-match.todo-card--duplicate { background: linear-gradient(145deg, #3a3144, #2a2637); }
+.todo-card__badge { display: inline-block; margin: 0 0 8px; border-radius: 999px; background: #ff6b81; color: white; font-size: 0.76rem; font-weight: 900; padding: 3px 8px; text-transform: uppercase; }
+.modal__hint { color: #52667f; margin: 0; }
+
+@media (max-width: 780px) {
+  .hero__actions { position: static; margin-top: 14px; }
+  .hero { pointer-events: auto; }
+  .search-status { left: 20px; right: 20px; }
+}

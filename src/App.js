@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react'
 import './App.css'
+import logoIcon from './img/icon128.png'
 
 const TODOS_STORAGE_KEY = 'todoman.todos.v1'
 const COLUMNS_STORAGE_KEY = 'todoman.columns.v1'
@@ -158,23 +159,55 @@ function sortColumns(columns) {
   return [...columns].sort((a, b) => a.ordinal - b.ordinal || a.name.localeCompare(b.name))
 }
 
-function TodoCard({todo, onClick, onDragStart}) {
+function normalizeSearchTerm(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function fuzzyMatches(value, term) {
+  const normalizedValue = normalizeSearchTerm(value)
+  const normalizedTerm = normalizeSearchTerm(term)
+  if (!normalizedTerm) return false
+  if (normalizedValue.includes(normalizedTerm)) return true
+
+  let valueIndex = 0
+  for (const character of normalizedTerm) {
+    valueIndex = normalizedValue.indexOf(character, valueIndex)
+    if (valueIndex === -1) return false
+    valueIndex += 1
+  }
+
+  return true
+}
+
+function getDuplicateTodoNameIds(todos) {
+  const idsByName = todos.reduce((groups, todo) => {
+    const name = normalizeSearchTerm(todo.name)
+    if (!name) return groups
+    groups[name] = [...(groups[name] || []), todo.id]
+    return groups
+  }, {})
+
+  return new Set(Object.values(idsByName).filter((ids) => ids.length > 1).flat())
+}
+
+function TodoCard({todo, isDuplicate, isSearchMatch, onClick, onDragStart}) {
   return (
     <button
-      className="todo-card"
+      className={`todo-card${isSearchMatch ? ' todo-card--search-match' : ''}${isDuplicate ? ' todo-card--duplicate' : ''}`}
       draggable
       onClick={() => onClick(todo.id)}
       onDragStart={(event) => onDragStart(event, todo.id)}
       type="button"
     >
       <span className="todo-card__title">{todo.name}</span>
+      {isDuplicate && <span className="todo-card__badge">Duplicate name</span>}
       <span className="todo-card__meta">Due {todo.due_date || 'unscheduled'}</span>
       <span className="todo-card__meta">Owner {todo.owner || 'unassigned'}</span>
     </button>
   )
 }
 
-function BoardColumn({column, todos, onCardClick, onDragStart, onDropTodo}) {
+function BoardColumn({column, duplicateTodoIds, searchTerm, todos, onCardClick, onDragStart, onDropTodo}) {
   return (
     <section
       className="board-column"
@@ -190,6 +223,8 @@ function BoardColumn({column, todos, onCardClick, onDragStart, onDropTodo}) {
           <TodoCard
             key={todo.id}
             todo={todo}
+            isDuplicate={duplicateTodoIds.has(todo.id)}
+            isSearchMatch={fuzzyMatches(todo.name, searchTerm) || fuzzyMatches(todo.details, searchTerm)}
             onClick={onCardClick}
             onDragStart={onDragStart}
           />
@@ -199,7 +234,7 @@ function BoardColumn({column, todos, onCardClick, onDragStart, onDropTodo}) {
   )
 }
 
-function BoardRow({title, description, columns, todos, onCardClick, onConfigure, onDragStart, onDropTodo}) {
+function BoardRow({title, description, columns, duplicateTodoIds, searchTerm, todos, onCardClick, onConfigure, onDragStart, onDropTodo}) {
   return (
     <section className="board-row" aria-label={`${title} board row`}>
       <div className="board-row__label">
@@ -215,6 +250,8 @@ function BoardRow({title, description, columns, todos, onCardClick, onConfigure,
             key={`${column.row}-${column.id}`}
             column={column}
             todos={todos.filter(column.filter)}
+            duplicateTodoIds={duplicateTodoIds}
+            searchTerm={searchTerm}
             onCardClick={onCardClick}
             onDragStart={onDragStart}
             onDropTodo={onDropTodo}
@@ -222,6 +259,44 @@ function BoardRow({title, description, columns, todos, onCardClick, onConfigure,
         ))}
       </div>
     </section>
+  )
+}
+
+
+function SearchPopup({initialTerm, onClose, onSearch}) {
+  const [term, setTerm] = useState(initialTerm)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+    inputRef.current?.select()
+  }, [])
+
+  function submit(event) {
+    event.preventDefault()
+    onSearch(term)
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <form className="modal" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
+        <div className="modal__header">
+          <h2>Search todos</h2>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close search">×</button>
+        </div>
+        <label>
+          Search term
+          <input ref={inputRef} value={term} placeholder="Type a name or detail fragment" onChange={(event) => setTerm(event.target.value)} />
+        </label>
+        <p className="modal__hint">Matching todo cards are highlighted as you fuzzy-match letters in order.</p>
+        <div className="modal__actions">
+          <button type="button" className="button button--secondary" onClick={() => onSearch('')}>Clear search</button>
+          <span className="modal__action-spacer" />
+          <button type="button" className="button button--secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="button">Highlight matches</button>
+        </div>
+      </form>
+    </div>
   )
 }
 
@@ -373,6 +448,8 @@ function App() {
   const [columnsByRow, setColumnsByRow] = useState(loadColumns)
   const [editorState, setEditorState] = useState(null)
   const [configuringRow, setConfiguringRow] = useState(null)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     try {
@@ -391,6 +468,7 @@ function App() {
   }, [columnsByRow])
 
   const activeTodos = todos.filter((todo) => todo.active)
+  const duplicateTodoIds = useMemo(() => getDuplicateTodoNameIds(activeTodos), [activeTodos])
   const priorityColumns = useMemo(() => sortColumns(columnsByRow.priority), [columnsByRow.priority])
 
   const rows = [
@@ -531,8 +609,14 @@ function App() {
   return (
     <main className="app-shell">
       <header className="hero">
-        <p className="eyebrow">Todoman</p>
-        <button type="button" className="button hero__action" onClick={addTodo}>Add todo</button>
+        <div className="brand">
+          <img className="brand__logo" src={logoIcon} alt="Todoman logo" />
+          <p className="eyebrow">Todoman</p>
+        </div>
+        <div className="hero__actions">
+          <button type="button" className="button button--secondary" onClick={() => setIsSearchOpen(true)}>Search</button>
+          <button type="button" className="button" onClick={addTodo}>Add todo</button>
+        </div>
       </header>
 
       <div className="board">
@@ -541,6 +625,8 @@ function App() {
             key={row.title}
             {...row}
             todos={activeTodos}
+            duplicateTodoIds={duplicateTodoIds}
+            searchTerm={searchTerm}
             onCardClick={openEditor}
             onConfigure={() => setConfiguringRow(row.rowKey)}
             onDragStart={handleDragStart}
@@ -548,6 +634,19 @@ function App() {
           />
         ))}
       </div>
+
+      {searchTerm && <p className="search-status">Highlighting fuzzy matches for “{searchTerm}”.</p>}
+
+      {isSearchOpen && (
+        <SearchPopup
+          initialTerm={searchTerm}
+          onClose={() => setIsSearchOpen(false)}
+          onSearch={(term) => {
+            setSearchTerm(term.trim())
+            setIsSearchOpen(false)
+          }}
+        />
+      )}
 
       {editingTodo && (
         <TodoEditor
